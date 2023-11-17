@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace APICatalogo.Controllers;
 
+[Route("/[controller]")]
+[ApiController]
 public class CategoriasController : Controller
 {
     private readonly AppDbContext _context;
@@ -17,26 +19,42 @@ public class CategoriasController : Controller
     [HttpGet("produtos")]
     public ActionResult<IEnumerable<Categoria>> GetCategoriasProdutos()
     {
-        return _context.Categorias.Include(p => p.Produtos).ToList();
+        try
+        {
+            return _context.Categorias.Include(p => p.Produtos).ToList();
+        }
+        catch (Exception)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                "Ocorreu um problema ao tratar a sua solicitação.");
+        }
     }
 
     [HttpGet]
     public ActionResult<IEnumerable<Categoria>> Get()
     {
-        return _context.Categorias.ToList();
+        return _context.Categorias.AsNoTracking().ToList();
     }
 
-    [HttpGet("{id:int", Name = "ObterCategoria")]
+    [HttpGet("{id:int}", Name = "ObterCategoria")]
     public ActionResult<Categoria> Get(int id)
     {
-        var categoria = _context.Categorias.FirstOrDefault(c => c.CategoriaId == id);
-
-        if(categoria is null)
+        try
         {
-            return NotFound("Categoria não encontrada");
-        }
+            var categoria = _context.Categorias.FirstOrDefault(c => c.CategoriaId == id);
 
-        return categoria;
+            if (categoria == null)
+            {
+                return NotFound("Categoria não encontrada");
+            }
+
+            return Ok(categoria);
+        }
+        catch (Exception)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                        "Ocorreu um problema ao tratar a sua solicitação.");
+        }
     }
 
 
@@ -44,7 +62,7 @@ public class CategoriasController : Controller
     public ActionResult Post(Categoria categoria)
     {
         if (categoria is null)
-            return BadRequest();
+            return BadRequest("Dados Invalidos");
 
         _context.Categorias.Add(categoria);
         _context.SaveChanges();
@@ -58,7 +76,7 @@ public class CategoriasController : Controller
     {
         if(id != categoria.CategoriaId)
         {
-            return BadRequest();
+            return BadRequest("Dados Invalidos");
         }
 
         _context.Entry(categoria).State = EntityState.Modified;
@@ -67,14 +85,14 @@ public class CategoriasController : Controller
         return Ok(categoria);
     }
 
-    [HttpDelete("{id:int")]
+    [HttpDelete("{id:int}")]
     public ActionResult Delete(int id)
     {
         var categoria = _context.Categorias.FirstOrDefault(c => c.CategoriaId == id);
 
         if(categoria is null)
         {
-            return NotFound("Categoria não localizada");
+            return NotFound("Categoria com id={id} não encontrada");
         }
 
         _context.Categorias.Remove(categoria);
